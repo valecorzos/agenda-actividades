@@ -6,7 +6,8 @@ export type Categoria =
   | "Diseño"
   | "Reunión"
   | "Capacitación"
-  | "Dashboard";
+  | "Dashboard"
+  | "Mantenimiento";
 
 export type Activity = {
   id: string;
@@ -26,6 +27,7 @@ export const CATEGORIAS: Categoria[] = [
   "Reunión",
   "Capacitación",
   "Dashboard",
+  "Mantenimiento",
 ];
 
 export type EstadoProyecto =
