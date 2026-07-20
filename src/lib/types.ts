@@ -1,5 +1,12 @@
 export type Usuario = "Juan" | "Valentina";
-export type Categoria = "Formulario" | "Procedimiento" | "Desarrollo" | "Diseño";
+export type Categoria =
+  | "Formulario"
+  | "Procedimiento"
+  | "Desarrollo"
+  | "Diseño"
+  | "Reunión"
+  | "Capacitación"
+  | "Dashboard";
 
 export type Activity = {
   id: string;
@@ -16,6 +23,9 @@ export const CATEGORIAS: Categoria[] = [
   "Procedimiento",
   "Desarrollo",
   "Diseño",
+  "Reunión",
+  "Capacitación",
+  "Dashboard",
 ];
 
 export type EstadoProyecto =
