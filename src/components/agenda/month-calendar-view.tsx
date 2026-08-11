@@ -25,7 +25,7 @@ import {
 import { fetchActivitiesByDateRange } from "@/lib/supabase/activities";
 import type { Activity } from "@/lib/types";
 
-const WEEKDAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const WEEKDAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MAX_CHIPS_PER_DAY = 3;
 
 const USUARIO_CHIP_CLASS: Record<Activity["usuario"], string> = {
