@@ -23,6 +23,15 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-fase-planificacion: var(--fase-planificacion);
+  --color-fase-contexto: var(--fase-contexto);
+  --color-fase-desarrollo: var(--fase-desarrollo);
+  --color-fase-tic: var(--fase-tic);
+  --color-fase-produccion: var(--fase-produccion);
+  --color-enfoque-juan: var(--enfoque-juan);
+  --color-enfoque-valentina: var(--enfoque-valentina);
+  --color-grafico-rejilla: var(--grafico-rejilla);
+  --color-grafico-eje: var(--grafico-eje);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -67,11 +76,36 @@
   --border: #dde5f7;
   --input: #dde5f7;
   --ring: #1067f2;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Paleta categórica de gráficos (tipo de documento). Orden fijo: nunca se
+     cicla ni se reasigna al filtrar, para que un color siempre signifique lo
+     mismo. Validada para daltonismo sobre fondo #ffffff. */
+  --chart-1: #1067f2;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+
+  /* Rampa ordinal de fases: un solo tono, de claro a oscuro. Las fases son
+     etapas de un mismo proceso, no identidades distintas, así que llevan rampa
+     y no colores categóricos. */
+  --fase-planificacion: #86b6ef;
+  --fase-contexto: #5598e7;
+  --fase-desarrollo: #2a78d6;
+  --fase-tic: #1c5cab;
+  --fase-produccion: #104281;
+
+  /* Enfoque: azul para Juan, rosado para Valentina. */
+  --enfoque-juan: #1067f2;
+  --enfoque-juan-suave: #e7f0ff;
+  --enfoque-juan-texto: #0a4bb8;
+  --enfoque-valentina: #d81b7f;
+  --enfoque-valentina-suave: #fdeaf4;
+  --enfoque-valentina-texto: #a3145f;
+
+  /* Cromo de gráficos: rejilla y ejes recesivos. */
+  --grafico-rejilla: #e6ecf8;
+  --grafico-eje: #c3cee6;
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -83,30 +117,52 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* El modo oscuro se activa con la clase .dark en <html>. Hoy nada la aplica:
+   los valores quedan definidos y en paleta Serex para que activarlo sea una
+   sola línea, sin que la app pierda la marca en el camino. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0b1024;
+  --foreground: #f3f5fa;
+  --card: #101836;
+  --card-foreground: #f3f5fa;
+  --popover: #101836;
+  --popover-foreground: #f3f5fa;
+  --primary: #5b8cff;
+  --primary-foreground: #0b1024;
+  --secondary: #1b2445;
+  --secondary-foreground: #f3f5fa;
+  --muted: #1b2445;
+  --muted-foreground: #b9c4dc;
+  --accent: #1b2445;
+  --accent-foreground: #5b8cff;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #2e3a63;
+  --input: #2e3a63;
+  --ring: #5b8cff;
+  /* Mismos tonos, re-escalonados para el fondo oscuro. No es un volteo
+     automático del modo claro: cada paso se validó contra #101836. */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+
+  --fase-planificacion: #184f95;
+  --fase-contexto: #256abf;
+  --fase-desarrollo: #3987e5;
+  --fase-tic: #6da7ec;
+  --fase-produccion: #9ec5f4;
+
+  --enfoque-juan: #5b8cff;
+  --enfoque-juan-suave: #1a2547;
+  --enfoque-juan-texto: #9dbaff;
+  --enfoque-valentina: #e0629f;
+  --enfoque-valentina-suave: #3a1b2c;
+  --enfoque-valentina-texto: #f0a5c8;
+
+  --grafico-rejilla: #222c50;
+  --grafico-eje: #2e3a63;
+
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

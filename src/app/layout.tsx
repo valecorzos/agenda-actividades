@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agenda de Actividades",
-  description: "Agenda compartida de tareas y proyectos",
+  title: "Proyectos de Innovación",
+  description:
+    "Seguimiento de documentos por línea de negocio, proceso y estado de avance",
 };
 
 export default function RootLayout({

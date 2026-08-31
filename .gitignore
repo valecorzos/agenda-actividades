@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Descarga de credenciales de Supabase: no empieza por punto, así que `.env*`
+# no la cubre y un `git add .` la subiría al repositorio.
+env.download
 
 # vercel
 .vercel
