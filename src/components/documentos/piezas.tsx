@@ -1,20 +1,24 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon } from "@hugeicons/core-free-icons";
 
 import { cn } from "@/lib/utils";
 import {
   CLASES_ESTADO,
-  COLOR_FASE,
+  CLASES_ESTADO_MANTENIMIENTO,
+  COLOR_AVANCE,
   COLOR_TIPO,
   ENFOQUE,
-  PESO_ENTREGA_TIC,
-  PESO_PRODUCCION,
   RESPONSABLES,
+  formatearFecha,
+  semaforoEntrega,
 } from "@/lib/documentos";
 import type {
+  DatosEntrega,
   EstadoDocumento,
+  EstadoMantenimiento,
   Responsable,
   TipoDocumento,
 } from "@/lib/documentos";
@@ -41,6 +45,30 @@ export function BadgeEstado({
   );
 }
 
+/**
+ * El estado de un mantenimiento. Es de solo lectura: lo deriva Postgres del
+ * progreso y de la fecha de inicio, así que aquí no hay nada que pulsar.
+ */
+export function BadgeEstadoMantenimiento({
+  estado,
+  className,
+}: {
+  estado: EstadoMantenimiento;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        CLASES_ESTADO_MANTENIMIENTO[estado],
+        className
+      )}
+    >
+      {estado}
+    </span>
+  );
+}
+
 // -------------------------------------------------------------------- Tipo
 
 export function BadgeTipo({ tipo }: { tipo: TipoDocumento }) {
@@ -52,6 +80,55 @@ export function BadgeTipo({ tipo }: { tipo: TipoDocumento }) {
         style={{ backgroundColor: COLOR_TIPO[tipo] }}
       />
       {tipo}
+    </span>
+  );
+}
+
+// ----------------------------------------------------------------- Entrega
+
+/**
+ * Fecha comprometida y cuánto falta para ella. El color no repite la fecha: la
+ * fecha dice *cuándo* y el plazo dice *qué tan cerca está*, que es lo único que
+ * se lee de un vistazo cuando la tabla tiene cuarenta filas.
+ *
+ * Sin fecha pactada se pinta un guion y nada más: un documento sin compromiso
+ * no está atrasado, simplemente no entra en el semáforo.
+ */
+export function Entrega({ entrega }: { entrega: DatosEntrega }) {
+  if (!entrega.fecha_estimada_entrega) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  return (
+    <span className="flex flex-col items-start gap-1 whitespace-nowrap">
+      <span className="text-sm">
+        {formatearFecha(entrega.fecha_estimada_entrega)}
+      </span>
+      <BadgePlazo entrega={entrega} />
+    </span>
+  );
+}
+
+/** Solo el chip del plazo, para donde la fecha ya está a la vista. */
+export function BadgePlazo({
+  entrega,
+  className,
+}: {
+  entrega: DatosEntrega;
+  className?: string;
+}) {
+  const semaforo = semaforoEntrega(entrega);
+  if (semaforo.tono === "sin-fecha") return null;
+
+  return (
+    <span
+      className={cn(
+        "w-fit rounded-full px-1.5 py-0.5 text-[11px] leading-none font-medium",
+        semaforo.clases,
+        className
+      )}
+    >
+      {semaforo.plazo}
     </span>
   );
 }
@@ -197,95 +274,80 @@ export function GanchitosEnfoque({
   );
 }
 
-// ------------------------------------------------------------------- Fases
-
-type ValoresFase = {
-  pct_planificacion: number;
-  pct_contexto: number;
-  pct_desarrollo: number;
-  entregado_tic: boolean;
-  en_produccion: boolean;
-};
+// ------------------------------------------------------------------ Avance
 
 /**
- * Barra segmentada del avance. El ancho de cada segmento es su peso dentro de
- * la fórmula (20/20/40/10/10) y el relleno es cuánto de esa fase está hecho: la
- * barra llena equivale exactamente al 100% global, así que el gráfico y el
- * número no pueden contradecirse.
+ * Barra de avance. Una sola barra y un solo color: la rampa por fases decía
+ * cinco cosas a la vez y ninguna se leía de un vistazo, que es justo para lo
+ * que sirve una barra en una tabla de cuarenta filas.
+ *
+ * El desglose por fase no se pierde: sigue en el formulario del documento,
+ * que es donde se edita, y en la ficha del reporte impreso.
  */
-export function BarraFases({
-  valores,
+export function BarraAvance({
+  valor,
+  terminado = valor >= 100,
   className,
 }: {
-  valores: ValoresFase;
+  valor: number;
+  /** Pinta la barra de verde. Por defecto, cuando llega al 100%. */
+  terminado?: boolean;
   className?: string;
 }) {
-  const segmentos = [
-    {
-      etiqueta: "Planificación",
-      peso: 20,
-      pct: valores.pct_planificacion,
-      color: COLOR_FASE.planificacion,
-    },
-    {
-      etiqueta: "Contexto",
-      peso: 20,
-      pct: valores.pct_contexto,
-      color: COLOR_FASE.contexto,
-    },
-    {
-      etiqueta: "Desarrollo",
-      peso: 40,
-      pct: valores.pct_desarrollo,
-      color: COLOR_FASE.desarrollo,
-    },
-    {
-      etiqueta: "Entrega a TIC",
-      peso: PESO_ENTREGA_TIC * 100,
-      pct: valores.entregado_tic ? 100 : 0,
-      color: COLOR_FASE.tic,
-    },
-    {
-      etiqueta: "En producción",
-      peso: PESO_PRODUCCION * 100,
-      pct: valores.en_produccion ? 100 : 0,
-      color: COLOR_FASE.produccion,
-    },
-  ];
-
   return (
     <div
-      className={cn("flex h-2.5 w-full gap-0.5", className)}
+      className={cn(
+        "h-2 w-full overflow-hidden rounded-full bg-muted",
+        className
+      )}
       role="img"
-      aria-label={segmentos
-        .map((s) => `${s.etiqueta} ${s.pct}%`)
-        .join(", ")}
+      aria-label={`${valor}% de avance`}
     >
-      {segmentos.map((s) => (
-        <div
-          key={s.etiqueta}
-          className="h-full overflow-hidden rounded-[3px] bg-muted"
-          style={{ flex: `${s.peso} 0 0` }}
-          title={`${s.etiqueta}: ${s.pct}%`}
-        >
-          <div
-            className="h-full rounded-[3px] transition-[width] duration-300"
-            style={{ width: `${s.pct}%`, backgroundColor: s.color }}
-          />
-        </div>
-      ))}
+      <div
+        className="h-full rounded-full transition-[width] duration-300"
+        style={{
+          width: `${valor}%`,
+          backgroundColor: terminado
+            ? COLOR_AVANCE.terminado
+            : COLOR_AVANCE.enCurso,
+        }}
+      />
     </div>
   );
 }
 
-/** Leyenda de la barra de fases. Sin ella el color no significa nada. */
-export function LeyendaFases({ className }: { className?: string }) {
+/**
+ * La barra con su porcentaje debajo. `detalle` es para lo que quiera colgarse
+ * a la derecha del número —una fecha de hito, por ejemplo— sin que cada sitio
+ * tenga que rearmar el maquetado.
+ */
+export function Avance({
+  valor,
+  terminado,
+  detalle,
+  className,
+}: {
+  valor: number;
+  terminado?: boolean;
+  detalle?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-[7rem] flex-col gap-1.5", className)}>
+      <BarraAvance valor={valor} terminado={terminado} />
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-semibold tabular-nums">{valor}%</span>
+        {detalle}
+      </div>
+    </div>
+  );
+}
+
+/** Qué significan los dos colores de la barra. Sin esto, el verde no dice nada. */
+export function LeyendaAvance({ className }: { className?: string }) {
   const items = [
-    { etiqueta: "Planificación 20%", color: COLOR_FASE.planificacion },
-    { etiqueta: "Contexto 20%", color: COLOR_FASE.contexto },
-    { etiqueta: "Desarrollo 40%", color: COLOR_FASE.desarrollo },
-    { etiqueta: "Entrega a TIC 10%", color: COLOR_FASE.tic },
-    { etiqueta: "En producción 10%", color: COLOR_FASE.produccion },
+    { etiqueta: "En construcción", color: COLOR_AVANCE.enCurso },
+    { etiqueta: "En producción", color: COLOR_AVANCE.terminado },
   ];
   return (
     <ul className={cn("flex flex-wrap items-center gap-x-4 gap-y-1", className)}>

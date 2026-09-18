@@ -27,49 +27,13 @@ import type {
   ModeloDashboard,
   Segmento,
 } from "@/lib/dashboard/modelo";
-
-/**
- * Los mismos tokens de `globals.css`, en claro. La página exportada los declara
- * en su propio `:root`, así que las cadenas `var(--x)` que trae el modelo
- * pintan aquí exactamente igual que en la aplicación y no hay dos paletas que
- * mantener sincronizadas —solo esta lista.
- */
-const TOKENS = `
-  --background: #f8faff;
-  --foreground: #1e2e5a;
-  --card: #ffffff;
-  --muted: #eef2fb;
-  --muted-foreground: #5b6a94;
-  --border: #dde5f7;
-
-  --chart-1: #1067f2;
-  --chart-2: #eb6834;
-  --chart-3: #1baf7a;
-  --chart-4: #eda100;
-  --chart-5: #e87ba4;
-
-  --fase-planificacion: #86b6ef;
-  --fase-contexto: #5598e7;
-  --fase-desarrollo: #2a78d6;
-  --fase-tic: #1c5cab;
-  --fase-produccion: #104281;
-
-  --grafico-eje: #c3cee6;
-`;
-
-/** Isotipo de Grupo Serex, en línea para que el archivo no dependa de nada. */
-const LOGO = `<svg viewBox="0 0 57.29 57.81" width="26" height="26" fill="#1e2e5a" aria-hidden="true"><path d="M55.89,24a3.38,3.38,0,0,1-.47-.35c-2.37-2.43-5.36-3.18-8.63-3.05-5.19.22-9.85,2.2-14.38,4.54-3.57,1.85-7,3.91-10.64,5.66a22.31,22.31,0,0,1-10.72,2.4,10.9,10.9,0,0,1-7-2.49,10.19,10.19,0,0,1-3-5.87c-.94-4.56.31-8.7,2.67-12.57a24.26,24.26,0,0,1,9.66-8.53,31.35,31.35,0,0,1,12-3.65A1.44,1.44,0,0,0,25.61,0h5.11c1.29.24,2.59.44,3.87.73,9.07,2.06,20.34,10.5,22.52,24.13.07.47.11.94.18,1.55l-1-1.78a2,2,0,0,0-.1-.66c-1.35-2.52-2.57-5.13-4.12-7.53-5.41-8.38-16.17-13-25.95-10.61-4.07,1-7.69,2.66-10.34,6A9.69,9.69,0,0,0,13.45,19c.34,3.32,3.12,5.74,6.87,6.05a21.47,21.47,0,0,0,9.52-1.59c2.38-.91,4.66-2.05,7-3C40.59,19,44.43,18.16,48.44,19A11.46,11.46,0,0,1,55.89,24Z"/><path d="M1.32,33.81a1.13,1.13,0,0,1,.33.16c2.69,2.82,6.09,3.46,9.77,3.12a35.47,35.47,0,0,0,13-4.29c3.57-1.85,7-3.91,10.63-5.68a22.57,22.57,0,0,1,11.67-2.53,9.93,9.93,0,0,1,7,3A10.67,10.67,0,0,1,56.37,34c.6,6.52-2,11.82-6.77,16a30.67,30.67,0,0,1-19.31,7.73c-8,.4-14.87-2.51-20.77-7.79A28.81,28.81,0,0,1,.16,33.32,9.72,9.72,0,0,1,0,31.52l1,1.74a1.2,1.2,0,0,0,0,.38c2,4.63,4.41,9,8.2,12.39,7.21,6.47,17.38,8.65,26.8,4.26a13.55,13.55,0,0,0,7.28-7.51c1.8-4.74-.61-9-5.54-9.92a16.44,16.44,0,0,0-6.55.35,40.23,40.23,0,0,0-8.49,3.12c-4,1.88-8.15,3.21-12.66,2.64A11.89,11.89,0,0,1,1.32,33.81Z"/></svg>`;
-
-// -------------------------------------------------------------- Utilidades
-
-/** Escapa todo lo que venga de la base de datos. */
-function esc(valor: string | number): string {
-  return String(valor)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import {
+  LOGO,
+  TOKENS,
+  esc,
+  fechaLarga,
+  selloFecha,
+} from "@/lib/reportes/marca";
 
 function tarjeta(titulo: string, descripcion: string, cuerpo: string): string {
   return `<section class="tarjeta">
@@ -368,22 +332,9 @@ const ESTILOS = `
 
 // ------------------------------------------------------------------ Salida
 
-function fechaLarga(momento: Date): string {
-  return momento.toLocaleString("es-CO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 /** `dashboard-proyectos-2026-08-31.html` */
 export function nombreArchivoDashboard(momento = new Date()): string {
-  const y = momento.getFullYear();
-  const m = String(momento.getMonth() + 1).padStart(2, "0");
-  const d = String(momento.getDate()).padStart(2, "0");
-  return `dashboard-proyectos-${y}-${m}-${d}.html`;
+  return `dashboard-proyectos-${selloFecha(momento)}.html`;
 }
 
 export function generarHtmlDashboard(

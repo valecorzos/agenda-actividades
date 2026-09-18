@@ -20,7 +20,7 @@ import { DocumentosFiltros } from "@/components/documentos/documentos-filtros";
 import { DocumentosTabla } from "@/components/documentos/documentos-tabla";
 import { DocumentoSheet } from "@/components/documentos/documento-sheet";
 import { MantenimientosSheet } from "@/components/documentos/mantenimientos-sheet";
-import { LeyendaFases } from "@/components/documentos/piezas";
+import { LeyendaAvance } from "@/components/documentos/piezas";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 import { useDocumentos } from "@/components/documentos/documentos-provider";
 import type { Documento } from "@/lib/documentos";
@@ -88,7 +88,7 @@ export function DocumentosView() {
               onEditar={abrirEdicion}
               onMantenimientos={setMantenimientosDe}
             />
-            <LeyendaFases className="px-3 pt-1" />
+            <LeyendaAvance className="px-3 pt-1" />
           </div>
         </TabsPanel>
 
