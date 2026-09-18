@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { BadgeEstado, SelectorEnfoque } from "@/components/documentos/piezas";
 import { useDocumentos } from "@/components/documentos/documentos-provider";
+import { startOfToday, toDateKey } from "@/lib/date";
 import {
   COLOR_FASE,
   COLOR_TIPO,
@@ -29,6 +30,7 @@ import {
   TIPOS_DOCUMENTO,
   calcularAvanceGlobal,
   derivarEstado,
+  formatearFecha,
 } from "@/lib/documentos";
 import type {
   Documento,
@@ -45,6 +47,10 @@ type EstadoFormulario = {
   tipo: TipoDocumento;
   nombre: string;
   descripcion: string;
+  /** `YYYY-MM-DD`. Cuándo se empezó de verdad, no cuándo se registró. */
+  fechaInicio: string;
+  /** `YYYY-MM-DD`, o cadena vacía si no hay fecha comprometida. */
+  fechaEstimada: string;
   planificacion: number;
   contexto: number;
   desarrollo: number;
@@ -59,6 +65,8 @@ const VACIO: EstadoFormulario = {
   tipo: "App",
   nombre: "",
   descripcion: "",
+  fechaInicio: "",
+  fechaEstimada: "",
   planificacion: 0,
   contexto: 0,
   desarrollo: 0,
@@ -74,6 +82,8 @@ function desdeDocumento(d: Documento): EstadoFormulario {
     tipo: d.tipo,
     nombre: d.nombre,
     descripcion: d.descripcion ?? "",
+    fechaInicio: d.fecha_inicio,
+    fechaEstimada: d.fecha_estimada_entrega ?? "",
     planificacion: d.pct_planificacion,
     contexto: d.pct_contexto,
     desarrollo: d.pct_desarrollo,
@@ -101,7 +111,13 @@ export function DocumentoSheet({
 
   React.useEffect(() => {
     if (!open) return;
-    setForm(documento ? desdeDocumento(documento) : VACIO);
+    // El "hoy" de un documento nuevo se calcula al abrir el panel, no al cargar
+    // el módulo: la pestaña puede llevar días abierta.
+    setForm(
+      documento
+        ? desdeDocumento(documento)
+        : { ...VACIO, fechaInicio: toDateKey(startOfToday()) }
+    );
     setError(null);
   }, [open, documento]);
 
@@ -153,6 +169,14 @@ export function DocumentoSheet({
     if (!form.procesoId) return setError("Elige un proceso.");
     if (!form.nombre.trim())
       return setError("El nombre del documento no puede estar vacío.");
+    if (!form.fechaInicio) return setError("Pon la fecha de inicio.");
+    if (form.fechaEstimada && form.fechaEstimada < form.fechaInicio) {
+      return setError(
+        `La fecha de entrega no puede ser anterior al inicio (${formatearFecha(
+          form.fechaInicio
+        )}).`
+      );
+    }
 
     const input: DocumentoInput = {
       linea_negocio_id: form.lineaNegocioId,
@@ -166,6 +190,8 @@ export function DocumentoSheet({
       entregado_tic: form.entregadoTic,
       en_produccion: form.enProduccion,
       responsable: form.responsable,
+      fecha_inicio: form.fechaInicio,
+      fecha_estimada_entrega: form.fechaEstimada || null,
     };
 
     setGuardando(true);
@@ -303,6 +329,45 @@ export function DocumentoSheet({
                 rows={3}
               />
             </Campo>
+
+            {/* Las dos fechas juntas: una es el piso de la otra, y separarlas
+                obligaría a subir y bajar para compararlas. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo
+                etiqueta="Fecha de inicio"
+                ayuda="Cuándo empezaron a trabajarlo de verdad, no cuándo se registró. De aquí salen los días en curso."
+              >
+                <Input
+                  type="date"
+                  value={form.fechaInicio}
+                  onChange={(e) => cambiar("fechaInicio", e.target.value)}
+                />
+              </Campo>
+
+              <Campo
+                etiqueta="Fecha estimada de entrega"
+                opcional
+                ayuda="Para cuándo se comprometieron. Sin fecha, el documento no entra en el semáforo de vencimientos."
+              >
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={form.fechaEstimada}
+                    min={form.fechaInicio || undefined}
+                    onChange={(e) => cambiar("fechaEstimada", e.target.value)}
+                  />
+                  {form.fechaEstimada && (
+                    <button
+                      type="button"
+                      onClick={() => cambiar("fechaEstimada", "")}
+                      className="text-xs whitespace-nowrap text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+              </Campo>
+            </div>
           </section>
 
           <hr className="border-border" />

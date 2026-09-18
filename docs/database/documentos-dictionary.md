@@ -12,6 +12,7 @@ erDiagram
     lineas_negocio ||--o{ documentos : clasifica
     procesos       ||--o{ documentos : clasifica
     documentos     ||--o{ documento_historial : "registra avance"
+    documentos     ||--o{ documento_mantenimientos : "recibe cambios"
 
     lineas_negocio {
         uuid id PK
@@ -37,9 +38,25 @@ erDiagram
         smallint pct_desarrollo
         boolean entregado_tic
         date fecha_entrega_tic
+        boolean en_produccion
+        date fecha_produccion
         enum responsable
+        date fecha_inicio
+        date fecha_estimada_entrega
         smallint avance_global "GENERADA"
         text estado "GENERADA"
+    }
+    documento_mantenimientos {
+        uuid id PK
+        uuid documento_id FK
+        text titulo
+        enum clase
+        enum estado "DERIVADA por trigger"
+        smallint progreso
+        date fecha_solicitud
+        date fecha_inicio
+        date fecha_estimada_entrega
+        date fecha_cierre
     }
     documento_historial {
         uuid id PK
@@ -67,16 +84,18 @@ erDiagram
 ```
 avance_global = round( planificación × 0.20
                      + contexto      × 0.20
-                     + desarrollo    × 0.50
-                     + (entregado_tic ? 100 : 0) × 0.10 )
+                     + desarrollo    × 0.40
+                     + (entregado_tic ? 100 : 0) × 0.10
+                     + (en_produccion ? 100 : 0) × 0.10 )
 ```
 
-El 10% reservado a la entrega a TIC hace que un documento **nunca llegue a 100%** mientras no esté entregado, aunque el desarrollo esté terminado — que es exactamente la señal que la jefa necesita ver.
+Los dos hitos finales valen 10% cada uno, así que un documento **nunca llega a 100%** hasta que está corriendo en producción: entregarlo a TIC lo deja en 90%. Terminar de construir algo que todavía nadie usa no es haber terminado, y esa diferencia es justo la que hay que poder ver.
 
 ## Estados derivados
 
 | Condición | Estado |
 |---|---|
+| `en_produccion = true` | **En producción** |
 | `entregado_tic = true` | **Entregada a TIC** |
 | `pct_desarrollo = 100` | **Lista para TIC** |
 | `pct_desarrollo > 0` | **En desarrollo** |
@@ -129,10 +148,43 @@ El 10% reservado a la entrega a TIC hace que un documento **nunca llegue a 100%*
 | `responsable` | `responsable_enfoque` | NULL | **Enfoque**: quién está trabajando el documento (`Juan` = azul, `Valentina` = rosado). `NULL` = sin asignar. |
 | `avance_global` | `smallint` | **GENERADA**, solo lectura | Porcentaje global ponderado. Ver fórmula arriba. |
 | `estado` | `text` | **GENERADA**, solo lectura | Estado derivado de los porcentajes. Ver tabla arriba. |
-| `fecha_inicio` | `date` | NOT NULL, default hoy | Cuándo se empezó, para medir antigüedad. |
+| `fecha_inicio` | `date` | NOT NULL, default hoy | **Cuándo se empezó a trabajar de verdad.** La escribe el usuario desde el formulario; el default solo sirve de arranque. No es la fecha de registro —esa es `created_at`— porque casi nunca coinciden. De aquí salen los días en curso. |
+| `fecha_estimada_entrega` | `date` | NULL, `>= fecha_inicio` | **Fecha estimada de entrega**: para cuándo se comprometió. `NULL` = sin fecha pactada, y entonces el documento no entra en el semáforo de vencimientos. No participa en el cálculo del avance: es el plazo, no el progreso. |
 | `created_at` / `updated_at` / `deleted_at` / `created_by_id` | — | — | Auditoría estándar. |
 
 Restricción clave: `documentos_entrega_coherente` impide guardar un documento marcado como entregado sin fecha, o con fecha sin estar entregado.
+
+`documentos_estimada_posterior_inicio` impide prometer una entrega para antes de haber arrancado. El formulario valida lo mismo antes de enviar, para que el usuario vea un mensaje en español en vez del error de Postgres.
+
+## `documento_mantenimientos` — cambios sobre lo ya entregado
+
+Un cambio sobre algo que ya está en producción no es un documento nuevo: es una fila colgada del documento existente. El padre conserva su avance; estos registros no lo modifican.
+
+| Campo | Tipo | Restricciones | Descripción de negocio |
+|---|---|---|---|
+| `id` | `uuid` | PK | Identificador único. |
+| `documento_id` | `uuid` | NOT NULL, FK → `documentos`, `on delete cascade` | Documento del que cuelga. |
+| `titulo` | `text` | NOT NULL, no vacío | Qué se pidió. |
+| `descripcion` | `text` | NULL | Contexto, quién lo pidió, condiciones. |
+| `clase` | `mantenimiento_clase` | NOT NULL, default `Mejora` | `Correctivo` (algo se rompió), `Mejora` (piden algo nuevo encima), `Actualización` (técnico, sin cambio funcional visible). |
+| `progreso` | `smallint` | NOT NULL, 0–100, default 0 | **Avance del mantenimiento.** Es la fuente de verdad del estado. |
+| `estado` | `mantenimiento_estado` | NOT NULL, **derivada por trigger** | `Abierto` / `En curso` / `Cerrado`. No se edita a mano: la recalcula `mantenimientos_normalizar_cierre()` en cada escritura. |
+| `responsable` | `responsable_enfoque` | NULL | Quién lo está trabajando. |
+| `fecha_solicitud` | `date` | NOT NULL, default hoy | **Cuándo lo pidieron.** |
+| `fecha_inicio` | `date` | NULL | **Cuándo empezamos a trabajarlo.** `NULL` = todavía no. Tenerla ya basta para que el estado pase a `En curso`. |
+| `fecha_estimada_entrega` | `date` | NULL, `>= fecha_inicio` | Para cuándo se comprometió. |
+| `fecha_cierre` | `date` | Coherente con el estado | La pone y la limpia el trigger al llegar (o dejar de estar) al 100%. |
+| `created_at` / `updated_at` / `deleted_at` / `created_by_id` | — | — | Auditoría estándar. |
+
+Reglas del trigger, en orden:
+
+| Situación | Estado |
+|---|---|
+| `progreso >= 100` | **Cerrado** — se rellena `fecha_cierre`, y `fecha_inicio` si estaba vacía |
+| `progreso > 0` **o** `fecha_inicio is not null` | **En curso** |
+| resto | **Abierto** |
+
+> Es un trigger `BEFORE` y no una columna generada porque `estado` ya existía como columna normal, con su enum, su índice parcial y su restricción de coherencia con `fecha_cierre`. Convertirla en generada obligaría a tirar la columna y todo lo que cuelga de ella sin ganar nada: el efecto para la aplicación es idéntico.
 
 ## `documento_historial` — bitácora de avance
 
@@ -153,7 +205,8 @@ Una fila por cada cambio de porcentaje o de entrega. La escribe **exclusivamente
 
 | Vista | Para qué sirve |
 |---|---|
-| `v_documentos_detalle` | Modelo de lectura principal del front. Documentos vivos con nombres de catálogo ya resueltos y tres métricas calculadas: `dias_en_curso`, `dias_sin_movimiento` y `estancado` (más de 21 días sin tocarse y sin entregar). |
+| `v_documentos_detalle` | Modelo de lectura principal del front. Documentos vivos con nombres de catálogo ya resueltos y las métricas calculadas: `dias_en_curso`, `dias_sin_movimiento`, `estancado` (más de 21 días sin tocarse y sin entregar), `dias_para_entrega` (con signo: positivo quedan días, 0 vence hoy, negativo se pasó) y `entrega_vencida`. Los dos últimos los calcula Postgres contra `current_date`, no el navegador, para que la aplicación y el reporte impreso no discrepen por la zona horaria del equipo. |
+| `v_mantenimientos_detalle` | Modelo de lectura de los mantenimientos vivos. Añade `dias_para_entrega`, `entrega_vencida` y `dias_en_curso` (desde la fecha de inicio real contra hoy; `NULL` mientras no se haya empezado). |
 | `v_resumen_linea_negocio` | Consolidado por empresa: total, entregados, en curso, sin iniciar y avance promedio. |
 | `v_resumen_proceso` | Consolidado por departamento, ordenado por carga. Responde "¿qué área nos consume más?". |
 | `v_resumen_tipo` | Consolidado por tipo de entregable. Responde "¿qué estamos construyendo realmente?". |
